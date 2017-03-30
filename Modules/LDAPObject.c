@@ -469,8 +469,10 @@ l_ldap_simple_bind( LDAPObject* self, PyObject* args )
     LDAPControl** server_ldcs = NULL;
     LDAPControl** client_ldcs = NULL;
     struct berval cred;
+    cred.bv_val = NULL;
+    const char *enc = "utf-8";
 
-    if (!PyArg_ParseTuple( args, "ss#|OO", &who, &cred.bv_val, &cred_len, &serverctrls, &clientctrls )) return NULL;
+    if (!PyArg_ParseTuple( args, "eses#|OO", enc, &who, enc, &cred.bv_val, &cred_len, &serverctrls, &clientctrls )) return NULL;
     cred.bv_len = (ber_len_t) cred_len;
 
     if (not_valid(self)) return NULL;
@@ -491,6 +493,8 @@ l_ldap_simple_bind( LDAPObject* self, PyObject* args )
 
     LDAPControl_List_DEL( server_ldcs );
     LDAPControl_List_DEL( client_ldcs );
+    PyMem_Free( who );
+    PyMem_Free( cred.bv_val );
 
     if ( ldaperror!=LDAP_SUCCESS )
         return LDAPerror( self->ldap, "ldap_simple_bind" );
@@ -1127,9 +1131,10 @@ l_ldap_search_ext( LDAPObject* self, PyObject* args )
     int msgid;
     int ldaperror;
 
-    if (!PyArg_ParseTuple( args, "sis|OiOOdi",
-                           &base, &scope, &filter, &attrlist, &attrsonly,
-                           &serverctrls, &clientctrls, &timeout, &sizelimit )) return NULL;
+    if (!PyArg_ParseTuple( args, "esies|OiOOdi",
+                           "utf-8", &base, &scope, "utf-8", &filter,
+                           &attrlist, &attrsonly, &serverctrls,
+                           &clientctrls, &timeout, &sizelimit )) return NULL;
     if (not_valid(self)) return NULL;
 
     if (!attrs_from_List( attrlist, &attrs, &attrs_seq ))
@@ -1160,6 +1165,8 @@ l_ldap_search_ext( LDAPObject* self, PyObject* args )
     free_attrs( &attrs,  attrs_seq);
     LDAPControl_List_DEL( server_ldcs );
     LDAPControl_List_DEL( client_ldcs );
+    PyMem_Free( base );
+    PyMem_Free( filter );
 
     if ( ldaperror!=LDAP_SUCCESS )
         return LDAPerror( self->ldap, "ldap_search_ext" );
